@@ -182,34 +182,45 @@ body {
   margin: 1.5rem 0;
 }
 .renman-card {
-  width: 130px; min-height: 200px;
+  width: 130px; min-height: 180px;
   background: #faf6ef; border: 1px solid #d4c5a9;
   border-radius: 3px; cursor: pointer;
-  transition: all 0.4s;
-  position: relative;
+  transition: all 0.3s;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 1rem 0.6rem;
+  position: relative;
 }
-.renman-card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-.renman-card .card-back {
-  position: absolute; inset: 0;
-  background: #d4c5a9; border-radius: 3px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem; color: #faf6ef; letter-spacing: 0.1em;
-  backface-visibility: hidden;
-  transition: opacity 0.4s;
-  z-index: 2;
-}
-.renman-card.flipped .card-back { opacity: 0; pointer-events: none; }
+.renman-card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.renman-card.active-detail { border-color: #c9a96e; background: #f8f2e8; }
 .card-pattern { font-size: 2.5rem; margin-bottom: 0.3rem; }
-.card-name { font-size: 1rem; color: #5a4a3a; }
-.card-name-en { font-size: 0.7rem; color: #b8a898; margin-bottom: 0.3rem; }
+.card-name { font-size: 1rem; color: #5a4a3a; margin-bottom: 0.1rem; }
 .card-num { font-size: 0.7rem; color: #c8b8a8; position: absolute; top: 6px; left: 8px; }
-.card-meaning {
-  font-size: 0.75rem; color: #7a6a5a; line-height: 1.5;
-  margin-top: 0.3rem; display: none;
+.card-sub { font-size: 0.75rem; color: #c9a96e; margin-top: 0.2rem; letter-spacing: 0.05em; }
+
+/* ===== 雷诺曼牌义详情 ===== */
+.renman-details {
+  max-width: 600px; margin: 0 auto 1rem;
+  background: #faf6ef; border: 1px solid #e8ddd0; border-radius: 2px;
+  padding: 0; overflow: hidden;
+  max-height: 0; transition: max-height 0.3s, padding 0.3s;
 }
-.renman-card.revealed .card-meaning { display: block; }
+.renman-details.open { max-height: 300px; padding: 1rem; }
+.renman-details .detail-title { font-size: 1rem; color: #5a4a3a; margin-bottom: 0.3rem; }
+.renman-details .detail-meaning { font-size: 0.85rem; color: #7a6a5a; line-height: 1.7; }
+.renman-details .detail-close {
+  float: right; background: none; border: none; font-size: 1rem;
+  cursor: pointer; color: #b8a898; padding: 0 0.2rem;
+}
+
+/* ===== 雷诺曼综合解读 ===== */
+.renman-reading {
+  max-width: 600px; margin: 0 auto 1rem;
+  background: #faf6ef; border: 1px solid #e8ddd0; border-radius: 2px;
+  padding: 1rem; text-align: left; display: none;
+}
+.renman-reading.show { display: block; }
+.renman-reading .reading-label { font-size: 0.8rem; color: #c9a96e; letter-spacing: 0.1em; margin-bottom: 0.4rem; }
+.renman-reading .reading-text { font-size: 0.9rem; color: #5a4a3a; line-height: 1.8; }
 
 /* ===== 六爻结果 ===== */
 .hexagram-display {
@@ -406,6 +417,11 @@ body {
         <div class="progress-label">翻开命运的一页……</div>
       </div>
       <div class="cards-row" id="renman-cards"></div>
+      <div class="renman-details" id="renman-detail"></div>
+      <div class="renman-reading" id="renman-reading">
+        <div class="reading-label">✨ 三张牌</div>
+        <div class="reading-text" id="renman-reading-text"></div>
+      </div>
       <div class="btn-group" id="renman-actions" style="display:none;">
         <button class="secondary-btn" onclick="drawRenman()">再算一次</button>
         <button class="secondary-btn" onclick="showView('main')">返回</button>
@@ -763,48 +779,85 @@ function renderRenmanCards(cards, question) {
   const div = document.getElementById('renman-cards');
   const positions = ['过去 · 现状', '此刻 · 核心', '未来 · 提示'];
   div.innerHTML = cards.map((c, i) => `
-    <div class="renman-card" onclick="flipCard(${i})">
-      <div class="card-back">❓</div>
+    <div class="renman-card" onclick="showRenmanDetail(${i})">
       <span class="card-num">${c.n}</span>
       <div class="card-pattern">${c.em}</div>
       <div class="card-name">${c.cn}</div>
-      <div class="card-name-en">${c.en}</div>
-      <div style="font-size:0.8rem;color:#c9a96e;margin-top:0.2rem;">${positions[i]}</div>
-      <div class="card-meaning">${c.meaning}${question ? '<br><br><em>关于「' + question + '」</em>' : ''}</div>
+      <div class="card-sub">${positions[i]}</div>
     </div>
   `).join('');
-}
 
-function flipCard(idx) {
-  const cards = document.querySelectorAll('.renman-card');
-  const el = cards[idx];
-  if (!el || (el.classList.contains('flipped') && el.classList.contains('revealed'))) return;
-  el.classList.add('flipped');
-  setTimeout(() => { el.classList.add('revealed'); }, 300);
+  // 综合解读
+  const readingDiv = document.getElementById('renman-reading');
+  const readingText = document.getElementById('renman-reading-text');
+  readingDiv.classList.add('show');
 
-  // 存历史
-  const card = window._lastRenmanPicks[idx];
-  if (!card) return;
-  const q = document.getElementById('renman-question').value.trim() || '（未填写问题）';
-  const positions = ['过去·现状', '此刻·核心', '未来·提示'];
-  addHistory({
-    type: '雷诺曼',
-    question: q,
-    result: `${card.cn}（${positions[idx]}）：${card.meaning.slice(0, 30)}…`
-  });
-
-  // AI 解读
   const s = getSettings();
   if (s.aiEnabled && s.apiKey) {
-    const meaningEl = el.querySelector('.card-meaning');
-    meaningEl.innerHTML = card.meaning + '<div class="ai-loading">✨ AI 解读中……</div>';
-    const sysMsg = '你是占卜师，根据用户抽到的雷诺曼牌写一段温暖简短的解读（50-80字）。直接以占卜师口吻写，不提AI。';
-    const userMsg = `第${card.n}号牌「${card.cn}（${card.en}）」。位置：${positions[idx]}。含义：${card.meaning}`;
-    callDeepSeek(q, sysMsg, userMsg).then(ai => {
-      if (ai) meaningEl.innerHTML = card.meaning + '<br><br><span class="ai-badge">AI</span> ' + ai;
-      else meaningEl.innerHTML = card.meaning;
+    readingText.innerHTML = '✨ AI 解读中……';
+    const sysMsg = '你是雷诺曼占卜师。用户抽了三张牌（位置：过去·现在·未来），请把它们串联成一段连贯的解读，50-80字。直接以占卜师口吻写，不提AI。';
+    const userMsg = cards.map((c,i) => `位置${positions[i]}：第${c.n}号「${c.cn}」- ${c.meaning}`).join('\n');
+    callDeepSeek(question, sysMsg, userMsg).then(ai => {
+      readingText.innerHTML = ai || generateCombinedReading(cards, question);
     });
+  } else {
+    readingText.innerHTML = generateCombinedReading(cards, question);
   }
+
+  // 存历史
+  const names = cards.map(c => c.cn).join('、');
+  addHistory({
+    type: '雷诺曼',
+    question: question || '（未填问题）',
+    result: `抽到：${names}`
+  });
+}
+
+function generateCombinedReading(cards, question) {
+  const starters = [
+    '你抽到的三张牌是',
+    '这三张牌带来了一个故事：',
+    '牌面依次为'
+  ];
+  const names = cards.map(c => c.cn).join('、');
+  const briefs = cards.map(c => c.meaning.split('。')[0]).join('。');
+  const tails = [
+    '静心体会，它们之间的联系会给你答案。',
+    '顺着牌面的指引，你会找到方向。',
+    '过去、现在、未来，自有其脉络。'
+  ];
+  return `${starters[Math.floor(Math.random() * starters.length)]}${names}。${briefs}。${tails[Math.floor(Math.random() * tails.length)]}${question ? '<br><br><em>关于「' + question + '」</em>' : ''}`;
+}
+
+function showRenmanDetail(idx) {
+  const cards = document.querySelectorAll('.renman-card');
+  const detailDiv = document.getElementById('renman-detail');
+  const card = window._lastRenmanPicks[idx];
+
+  // 如果已打开同一个，关闭它
+  if (detailDiv.classList.contains('open') && detailDiv.dataset.idx == idx) {
+    detailDiv.classList.remove('open');
+    cards[idx].classList.remove('active-detail');
+    return;
+  }
+
+  cards.forEach((c, i) => {
+    c.classList.toggle('active-detail', i === idx);
+  });
+
+  const positions = ['过去 · 现状', '此刻 · 核心', '未来 · 提示'];
+  detailDiv.innerHTML = `
+    <button class="detail-close" onclick="closeRenmanDetail()">✕</button>
+    <div class="detail-title">${card.em} ${card.cn} · ${positions[idx]}</div>
+    <div class="detail-meaning">${card.meaning}</div>
+  `;
+  detailDiv.dataset.idx = idx;
+  detailDiv.classList.add('open');
+}
+
+function closeRenmanDetail() {
+  document.getElementById('renman-detail').classList.remove('open');
+  document.querySelectorAll('.renman-card').forEach(c => c.classList.remove('active-detail'));
 }
 
 // ============================================================
