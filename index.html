@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>算算</title>
+<style>
+/* ===== 全局 ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Noto Serif SC", "Source Han Serif SC", STSong, "宋体", serif;
+  background: #f5f0e8;
+  color: #5a4a3a;
+  min-height: 100vh;
+  line-height: 1.7;
+}
+.hidden { display: none !important; }
+
+/* ===== 弹窗 ===== */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: #faf6ef;
+  max-width: 480px; width: 90%;
+  padding: 2.5rem 2rem; border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  text-align: center;
+  position: relative;
+}
+.modal::before {
+  content: '';
+  position: absolute; inset: 8px;
+  border: 1px solid #d4c5a9; border-radius: 2px;
+  pointer-events: none;
+}
+.modal h1 { font-size: 2.2rem; font-weight: 400; color: #7a6a5a; letter-spacing: 0.3em; margin-bottom: 0.3rem; }
+.modal .subtitle { font-size: 0.85rem; color: #b8a898; margin-bottom: 1.5rem; }
+.modal p { font-size: 0.95rem; color: #7a6a5a; margin-bottom: 0.6rem; text-align: left; }
+.modal .note { font-size: 0.8rem; color: #b8a898; margin-top: 1.2rem; font-style: italic; }
+.modal-btn {
+  margin-top: 1.5rem;
+  background: #c9a96e; color: #fff; border: none;
+  padding: 0.6rem 2.5rem; font-size: 1rem; border-radius: 2px;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.3s;
+}
+.modal-btn:hover { background: #b89650; }
+
+/* ===== 顶部栏 ===== */
+.top-bar {
+  display: flex; justify-content: flex-end; align-items: center;
+  padding: 1rem 1.5rem; gap: 0.8rem;
+}
+.top-bar button {
+  background: none; border: 1px solid #d4c5a9; color: #8b7a6a;
+  padding: 0.3rem 0.8rem; font-size: 0.85rem; border-radius: 2px;
+  cursor: pointer; font-family: inherit; transition: 0.2s;
+}
+.top-bar button:hover { background: #ede5d8; }
+
+/* ===== 主界面 ===== */
+.main-view {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: calc(100vh - 60px);
+  padding: 2rem 1rem;
+}
+.main-title {
+  font-size: 3rem; font-weight: 400; color: #7a6a5a;
+  letter-spacing: 0.5em; margin-bottom: 0.2rem;
+}
+.main-sub { font-size: 0.9rem; color: #b8a898; margin-bottom: 3rem; }
+.cards-container {
+  display: flex; gap: 2.5rem; flex-wrap: wrap; justify-content: center;
+}
+.card-entry {
+  width: 220px; height: 280px;
+  background: #faf6ef;
+  border: 1px solid #d4c5a9;
+  border-radius: 4px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+.card-entry:hover { transform: translateY(-4px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+.card-entry::before {
+  content: '';
+  position: absolute; inset: 6px;
+  border: 1px solid #e8ddd0; border-radius: 2px;
+  pointer-events: none;
+}
+.card-entry .icon { font-size: 3rem; margin-bottom: 0.8rem; }
+.card-entry .label { font-size: 1.2rem; color: #7a6a5a; letter-spacing: 0.15em; }
+.card-entry .sublabel { font-size: 0.8rem; color: #b8a898; margin-top: 0.3rem; }
+.yinyang {
+  width: 60px; height: 60px;
+  background: #000;
+  border-radius: 50%;
+  position: relative;
+  margin-bottom: 0.8rem;
+  overflow: hidden;
+}
+.yinyang::before {
+  content: '';
+  position: absolute; width: 30px; height: 30px;
+  border-radius: 50%; background: #fff;
+  top: 0; left: 15px;
+}
+.yinyang::after {
+  content: '';
+  position: absolute; width: 30px; height: 30px;
+  border-radius: 50%; background: #000;
+  bottom: 0; left: 15px;
+}
+.yinyang-inner-w { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #000; top: 9px; left: 24px; }
+.yinyang-inner-b { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #fff; bottom: 9px; left: 24px; }
+
+/* ===== 通用页面头 ===== */
+.page-header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.2rem 1.5rem; border-bottom: 1px solid #e8ddd0;
+}
+.page-header .back-btn {
+  background: none; border: none; font-size: 1.2rem;
+  cursor: pointer; color: #8b7a6a; padding: 0.2rem 0.5rem;
+}
+.page-header h2 { font-size: 1.1rem; font-weight: 400; color: #7a6a5a; letter-spacing: 0.2em; }
+.page-content { padding: 2rem 1.5rem; max-width: 700px; margin: 0 auto; }
+
+/* ===== 输入框 ===== */
+.question-input {
+  width: 100%; padding: 0.6rem 1rem;
+  border: 1px solid #d4c5a9; border-radius: 2px;
+  background: #faf6ef; font-family: inherit; font-size: 0.95rem;
+  color: #5a4a3a; margin-bottom: 1.5rem; outline: none;
+  transition: border 0.2s;
+}
+.question-input:focus { border-color: #c9a96e; }
+.question-input::placeholder { color: #c8b8a8; }
+
+/* ===== 抽牌按钮 ===== */
+.action-btn {
+  background: #c9a96e; color: #fff; border: none;
+  padding: 0.7rem 2.5rem; font-size: 1rem; border-radius: 2px;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.3s; display: inline-block;
+}
+.action-btn:hover { background: #b89650; }
+.action-btn:disabled { background: #ddd0c0; cursor: not-allowed; }
+.btn-group { text-align: center; margin-top: 1.5rem; }
+.secondary-btn {
+  background: none; border: 1px solid #d4c5a9; color: #8b7a6a;
+  padding: 0.6rem 2rem; font-size: 0.9rem; border-radius: 2px;
+  cursor: pointer; font-family: inherit; margin: 0 0.5rem;
+  transition: 0.2s;
+}
+.secondary-btn:hover { background: #ede5d8; }
+
+/* ===== 进度条 ===== */
+.progress-container {
+  margin: 1.5rem auto; max-width: 300px; display: none;
+  text-align: center;
+}
+.progress-container.active { display: block; }
+.progress-bar {
+  height: 3px; background: #e8ddd0; border-radius: 2px; overflow: hidden; margin-bottom: 0.5rem;
+}
+.progress-fill {
+  height: 100%; width: 0%; background: #c9a96e; border-radius: 2px;
+  transition: width 0.1s;
+}
+.progress-label { font-size: 0.8rem; color: #b8a898; }
+
+/* ===== 雷诺曼牌 ===== */
+.renman-area { text-align: center; min-height: 300px; }
+.cards-row {
+  display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+.renman-card {
+  width: 130px; min-height: 200px;
+  background: #faf6ef; border: 1px solid #d4c5a9;
+  border-radius: 3px; cursor: pointer;
+  transition: all 0.4s;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 1rem 0.6rem;
+}
+.renman-card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.renman-card .card-back {
+  position: absolute; inset: 0;
+  background: #d4c5a9; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: #faf6ef; letter-spacing: 0.1em;
+  backface-visibility: hidden;
+  transition: opacity 0.4s;
+  z-index: 2;
+}
+.renman-card.flipped .card-back { opacity: 0; pointer-events: none; }
+.card-pattern { font-size: 2.5rem; margin-bottom: 0.3rem; }
+.card-name { font-size: 1rem; color: #5a4a3a; }
+.card-name-en { font-size: 0.7rem; color: #b8a898; margin-bottom: 0.3rem; }
+.card-num { font-size: 0.7rem; color: #c8b8a8; position: absolute; top: 6px; left: 8px; }
+.card-meaning {
+  font-size: 0.75rem; color: #7a6a5a; line-height: 1.5;
+  margin-top: 0.3rem; display: none;
+}
+.renman-card.revealed .card-meaning { display: block; }
+
+/* ===== 六爻结果 ===== */
+.hexagram-display {
+  text-align: center; margin: 1.5rem 0;
+}
+.hexagram-name { font-size: 1.5rem; color: #5a4a3a; letter-spacing: 0.2em; margin-bottom: 0.5rem; }
+.hexagram-symbol { margin: 1rem 0; }
+.hexagram-line {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  margin: 0.15rem 0;
+}
+.hexagram-line .yin-line { display: flex; gap: 0.5rem; }
+.hexagram-line .yin-line .seg { width: 15px; height: 3px; background: #5a4a3a; }
+.hexagram-line .yang-line { width: 35px; height: 3px; background: #5a4a3a; }
+.hexagram-line .moving-mark { font-size: 0.7rem; color: #c9a96e; }
+.hexagram-reading {
+  background: #faf6ef; border: 1px solid #e8ddd0; border-radius: 2px;
+  padding: 1.2rem; margin-top: 1rem; text-align: left;
+}
+.hexagram-reading .original { font-size: 0.9rem; color: #7a6a5a; margin-bottom: 0.3rem; }
+.hexagram-reading .translation { font-size: 0.9rem; color: #5a4a3a; margin-bottom: 0.8rem; }
+.hexagram-reading .ai-take { font-size: 0.95rem; color: #5a4a3a; line-height: 1.7; }
+
+/* ===== 历史记录 ===== */
+.history-item {
+  border-bottom: 1px solid #e8ddd0;
+  padding: 0.8rem 0; font-size: 0.9rem;
+}
+.history-item .h-type { font-weight: 600; color: #c9a96e; font-size: 0.8rem; }
+.history-item .h-question { color: #5a4a3a; }
+.history-item .h-result { color: #8b7a6a; font-size: 0.85rem; margin-top: 0.2rem; }
+.history-item .h-time { color: #b8a898; font-size: 0.75rem; }
+.empty-hint { color: #b8a898; text-align: center; padding: 3rem 0; font-size: 0.9rem; }
+
+/* ===== 介绍页 ===== */
+.intro-section { margin-bottom: 2rem; }
+.intro-section h3 { font-size: 1.1rem; color: #7a6a5a; letter-spacing: 0.15em; margin-bottom: 0.8rem; border-left: 3px solid #c9a96e; padding-left: 0.6rem; }
+.intro-section p { font-size: 0.9rem; color: #6a5a4a; margin-bottom: 0.5rem; }
+
+/* ===== 摇卦动画 ===== */
+.coin-area { text-align: center; margin: 1.5rem 0; min-height: 100px; }
+.coin-animation {
+  position: relative; width: 80px; height: 80px; margin: 0 auto 1rem;
+  border-radius: 50%; background: #c9a96e;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: #fff;
+  transition: transform 0.6s;
+}
+.coin-animation.spinning {
+  animation: coinFlip 1.2s ease-in-out;
+}
+@keyframes coinFlip {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(180deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+/* ===== 摇卦流程指示 ===== */
+.step-indicator { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 1rem; }
+.step-dot { width: 10px; height: 10px; border-radius: 50%; background: #e8ddd0; transition: 0.3s; }
+.step-dot.active { background: #c9a96e; }
+.step-dot.done { background: #8b7a6a; }
+
+/* ===== 设置弹窗 ===== */
+.settings-modal { max-width: 420px; }
+.settings-row { margin: 1rem 0; text-align: left; }
+.settings-row label { display: block; font-size: 0.9rem; color: #7a6a5a; margin-bottom: 0.3rem; }
+.settings-row input[type="password"],
+.settings-row input[type="text"] {
+  width: 100%; padding: 0.5rem 0.8rem;
+  border: 1px solid #d4c5a9; border-radius: 2px;
+  background: #faf6ef; font-family: inherit; font-size: 0.9rem;
+  color: #5a4a3a; outline: none;
+}
+.settings-row input:focus { border-color: #c9a96e; }
+.settings-hint { font-size: 0.75rem; color: #b8a898; margin-top: 0.3rem; }
+.toggle-switch {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  cursor: pointer; font-size: 0.9rem; color: #7a6a5a;
+}
+.toggle-switch input { display: none; }
+.toggle-track {
+  width: 36px; height: 20px; border-radius: 10px;
+  background: #ddd0c0; position: relative; transition: 0.2s;
+}
+.toggle-track::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  transition: 0.2s;
+}
+.toggle-switch input:checked + .toggle-track { background: #c9a96e; }
+.toggle-switch input:checked + .toggle-track::after { left: 18px; }
+.settings-status {
+  font-size: 0.8rem; color: #8b7a6a; margin-top: 0.5rem; padding: 0.3rem 0.5rem;
+  background: #f0e8d8; border-radius: 2px; display: none;
+}
+.settings-status.ok { display: block; color: #5a8a5a; background: #e8f0e8; }
+.settings-status.err { display: block; color: #aa5555; background: #f0e8e8; }
+
+.ai-badge {
+  display: inline-block; font-size: 0.7rem; padding: 0.1rem 0.4rem;
+  border-radius: 2px; background: #c9a96e; color: #fff; margin-left: 0.3rem;
+}
+.ai-loading { font-size: 0.8rem; color: #b8a898; font-style: italic; margin: 0.5rem 0; }
+
+/* ===== 响应式 ===== */
+@media (max-width: 600px) {
+  .card-entry { width: 160px; height: 220px; }
+  .card-entry .icon { font-size: 2.2rem; }
+  .renman-card { width: 100px; min-height: 160px; padding: 0.6rem; }
+  .card-pattern { font-size: 1.8rem; }
+  .cards-row { gap: 1rem; }
+  .main-title { font-size: 2rem; }
+  .modal { padding: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== 弹窗 ========== -->
+<div id="modal" class="modal-overlay">
+  <div class="modal">
+    <h1>算算</h1>
+    <div class="subtitle">— 不算命，只算心事 —</div>
+    <p><strong>🔮 雷诺曼</strong> · 三十六张牌，三张一组，看当下。</p>
+    <p><strong>☯ 六爻</strong> · 六次摇卦，一卦一解，问吉凶。</p>
+    <p style="margin-top:1rem;">凡事皆有定数，心诚则灵。</p>
+    <div class="note">纯娱乐，别太当真 :)</div>
+    <button class="modal-btn" onclick="closeModal()">知道了</button>
+  </div>
+</div>
+
+<!-- ========== 设置弹窗 ========== -->
+<div id="settings-modal" class="modal-overlay hidden">
+  <div class="modal settings-modal">
+    <h1 style="font-size:1.4rem;letter-spacing:0.2em;">⚙️ 设置</h1>
+    <div class="settings-row">
+      <label>DeepSeek API Key</label>
+      <input type="password" id="api-key-input" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+      <div class="settings-hint">你的 key 只存在本地浏览器，不会上传别处</div>
+    </div>
+    <div class="settings-row">
+      <label class="toggle-switch">
+        <input type="checkbox" id="ai-toggle">
+        <span class="toggle-track"></span>
+        使用 AI 解读
+      </label>
+      <div class="settings-hint">开启后，占卜结果会用 DeepSeek 生成个性化解读</div>
+    </div>
+    <div class="settings-status" id="settings-status">已保存</div>
+    <div class="btn-group" style="margin-top:1.5rem;">
+      <button class="modal-btn" onclick="saveSettings()" style="padding:0.5rem 2rem;">保存</button>
+      <button class="secondary-btn" onclick="closeSettings()">取消</button>
+      <button class="secondary-btn" onclick="testApiKey()" style="font-size:0.8rem;">测试连接</button>
+    </div>
+  </div>
+</div>
+<div id="view-main" class="main-view">
+  <div class="top-bar">
+    <button onclick="showView('intro')">📖 介绍</button>
+    <button onclick="showView('history')">🕰 记录</button>
+    <button onclick="openSettings()">⚙️</button>
+  </div>
+  <div class="main-title">算算</div>
+  <div class="main-sub">选一个方式，问你想问的</div>
+  <div class="cards-container">
+    <div class="card-entry" onclick="showView('renman')">
+      <div class="icon">🃏</div>
+      <div class="label">雷诺曼</div>
+      <div class="sublabel">三十六张牌·三张卜</div>
+    </div>
+    <div class="card-entry" onclick="showView('liuyao')">
+      <div class="yinyang"><div class="yinyang-inner-w"></div><div class="yinyang-inner-b"></div></div>
+      <div class="label">六爻</div>
+      <div class="sublabel">六次摇卦·一卦解</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 雷诺曼页面 ========== -->
+<div id="view-renman" class="hidden">
+  <div class="page-header">
+    <button class="back-btn" onclick="showView('main')">←</button>
+    <h2>🔮 雷诺曼</h2>
+  </div>
+  <div class="page-content">
+    <input type="text" id="renman-question" class="question-input" placeholder="心里想着一个问题……（选填）" maxlength="100">
+    <div class="renman-area" id="renman-area">
+      <div class="btn-group">
+        <button class="action-btn" onclick="drawRenman()">抽牌</button>
+      </div>
+      <div class="progress-container" id="renman-progress">
+        <div class="progress-bar"><div class="progress-fill" id="renman-fill"></div></div>
+        <div class="progress-label">翻开命运的一页……</div>
+      </div>
+      <div class="cards-row" id="renman-cards"></div>
+      <div class="btn-group" id="renman-actions" style="display:none;">
+        <button class="secondary-btn" onclick="drawRenman()">再算一次</button>
+        <button class="secondary-btn" onclick="showView('main')">返回</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 六爻页面 ========== -->
+<div id="view-liuyao" class="hidden">
+  <div class="page-header">
+    <button class="back-btn" onclick="showView('main')">←</button>
+    <h2>☯ 六爻</h2>
+  </div>
+  <div class="page-content">
+    <input type="text" id="liuyao-question" class="question-input" placeholder="心里想着一个问题……（选填）" maxlength="100">
+    <div class="coin-area" id="coin-area">
+      <div class="btn-group">
+        <button class="action-btn" onclick="startLiuyao()">摇卦</button>
+      </div>
+      <div class="step-indicator" id="step-dots">
+        <div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div>
+        <div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div>
+      </div>
+      <div class="coin-animation hidden" id="coin-ani">☯</div>
+      <div class="progress-container" id="liuyao-progress" style="max-width:200px;">
+        <div class="progress-bar"><div class="progress-fill" id="liuyao-fill"></div></div>
+        <div class="progress-label">摇卦中……</div>
+      </div>
+    </div>
+    <div class="hexagram-display hidden" id="hexagram-result"></div>
+  </div>
+</div>
+
+<!-- ========== 介绍页 ========== -->
+<div id="view-intro" class="hidden">
+  <div class="page-header">
+    <button class="back-btn" onclick="showView('main')">←</button>
+    <h2>📖 介绍</h2>
+  </div>
+  <div class="page-content">
+    <div class="intro-section">
+      <h3>🔮 雷诺曼</h3>
+      <p>雷诺曼是一种以36张牌为基础的占卜系统，每张牌对应一个简单的日常意象——心、戒指、船、狐狸……</p>
+      <p>你抽三张牌，分别代表「过去·现在·未来」或「现状·建议·结果」，三张牌连起来讲一个故事。</p>
+      <p>雷诺曼不靠神秘符号，它以日常事物的象征意义来解读，直接、实用、不绕弯子。</p>
+    </div>
+    <div class="intro-section">
+      <h3>☯ 六爻</h3>
+      <p>六爻源自《易经》，用三枚铜钱摇六次，每次记录阴阳，从下到上组成一卦。</p>
+      <p>六十四卦各有卦名卦辞，是古代智慧的结晶。六爻最擅长回答「该不该」「能不能」「会怎样」这类具体问题。</p>
+      <p>心诚则灵——摇卦前心里想清楚你的问题。</p>
+    </div>
+    <div class="intro-section">
+      <h3>关于「算算」</h3>
+      <p>一个安静的占卜小站，不做用户注册，不收集个人信息。</p>
+      <p>所有占卜结果仅保存在你的浏览器本地。</p>
+      <p style="font-style:italic;color:#b8a898;margin-top:1rem;">信则灵，不信则玩。:)</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 历史记录 ========== -->
+<div id="view-history" class="hidden">
+  <div class="page-header">
+    <button class="back-btn" onclick="showView('main')">←</button>
+    <h2>🕰 历史记录</h2>
+    <button style="margin-left:auto;background:none;border:1px solid #d4c5a9;color:#8b7a6a;padding:0.2rem 0.6rem;font-size:0.8rem;border-radius:2px;cursor:pointer;font-family:inherit;" onclick="clearHistory()">清空</button>
+  </div>
+  <div class="page-content" id="history-list"></div>
+</div>
+
+<script>
+// ============================================================
+//  雷诺曼 36 张牌数据
+// ============================================================
+const RENMAN_CARDS = [
+  {n:1, cn:"骑士", en:"Rider", em:"🏇", meaning:"消息将至，新的开始。这张牌代表速度、行动和远方的讯息。好事将近，或有人即将进入你的生活。"},
+  {n:2, cn:"幸运草", en:"Clover", em:"☘️", meaning:"短暂的幸运，小小的惊喜。这张牌代表好运、机会和希望。事情正在转向有利的方向，但可能是短暂的，要把握住。"},
+  {n:3, cn:"船", en:"Ship", em:"⛵", meaning:"旅行、变化、远行。这张牌代表出行、距离和探索。可能是物理上的旅行，也可能是人生阶段的变化。"},
+  {n:4, cn:"房子", en:"House", em:"🏠", meaning:"家庭、稳定、归属感。这张牌关乎你的家、你的根基。适合考虑与家人、住所相关的事宜。"},
+  {n:5, cn:"树", en:"Tree", em:"🌳", meaning:"健康、成长、根基。这张牌代表生命力、健康状态和个人成长。事情正在稳步发展，需要耐心。"},
+  {n:6, cn:"云", en:"Clouds", em:"☁️", meaning:"不确定、迷茫、困惑。这张牌代表模糊的状态和不清楚的局面。建议不要急于行动，等雾散了再做决定。"},
+  {n:7, cn:"蛇", en:"Snake", em:"🐍", meaning:"智慧、转变、也可能是欺骗。这张牌代表复杂的情况。可能是你需要展现智慧的时候，也可能有人在暗中行动。"},
+  {n:8, cn:"棺材", en:"Coffin", em:"⚰️", meaning:"结束、终结、转变。这张牌代表某件事的结束。不要害怕——结束往往是新开始的序章。"},
+  {n:9, cn:"花束", en:"Bouquet", em:"💐", meaning:"礼物、美好的事物、社交。这张牌是幸运牌，代表收到礼物、好消息或愉快的社交活动。"},
+  {n:10, cn:"镰刀", en:"Scythe", em:"🌾", meaning:"切割、决策、突然的变化。这张牌代表需要做出决断，或一个突如其来但必要的改变。"},
+  {n:11, cn:"扫帚", en:"Whip", em:"🧹", meaning:"冲突、争吵、重复。代表小的摩擦或争执，也可能意味着需要「扫除」生活中的某些东西。"},
+  {n:12, cn:"猫头鹰", en:"Owls", em:"🦉", meaning:"忧虑、琐碎的烦恼。代表不必要的担忧或过多的小事。提醒你不要为小事焦虑。"},
+  {n:13, cn:"孩子", en:"Child", em:"👶", meaning:"新的开始、纯真、信任。代表一个新项目、一段新关系或一个新的视角。保持开放和纯真。"},
+  {n:14, cn:"狐狸", en:"Fox", em:"🦊", meaning:"谨慎、聪明、灵活。代表需要保持警惕、运用智慧。建议你做事不要太过直接，用点策略。"},
+  {n:15, cn:"熊", en:"Bear", em:"🐻", meaning:"力量、保护、权力。代表强大的力量——要么是你自己的力量，要么是你需要面对的权威人物。"},
+  {n:16, cn:"星星", en:"Stars", em:"⭐", meaning:"指引、灵感、希望的信号。非常正面的牌，代表你在正确的道路上，宇宙在给你信号。"},
+  {n:17, cn:"鹳", en:"Stork", em:"🕊️", meaning:"变化、升级、新开始。代表一个让人期待的转变，可能是搬家、换工作或新的家庭成员。"},
+  {n:18, cn:"狗", en:"Dog", em:"🐕", meaning:"忠诚、朋友、陪伴。代表真诚的友谊或可靠的盟友。你身边有值得信任的人。"},
+  {n:19, cn:"塔", en:"Tower", em:"🏰", meaning:"孤独、权威、独立的立场。代表独处或需要依靠自己的时刻。可能是建立边界的好时机。"},
+  {n:20, cn:"花园", en:"Garden", em:"🌺", meaning:"社交、聚会、公开场合。代表社交活动、公众展示或团队合作。事情可能与集体相关。"},
+  {n:21, cn:"山", en:"Mountain", em:"⛰️", meaning:"阻碍、挑战、需要耐力。代表面前的困难或障碍。但记住——山是可以翻越的。"},
+  {n:22, cn:"十字路", en:"Crossroad", em:"🔀", meaning:"选择、决策、岔路口。代表你需要做出一个重要选择。两种可能性都有各自的旅程。"},
+  {n:23, cn:"老鼠", en:"Mice", em:"🐭", meaning:"损失、忧虑、小问题累积。代表慢慢被侵蚀的东西——可能在消耗你的时间、金钱或精力。"},
+  {n:24, cn:"心", en:"Heart", em:"❤️", meaning:"爱情、情感、真诚。代表爱——可能是一段感情的开始，也可能是你对某件事发自内心的热爱。"},
+  {n:25, cn:"戒指", en:"Ring", em:"💍", meaning:"承诺、结合、约定。代表一段关系的确认、一个承诺的兑现或一个重要的协议。"},
+  {n:26, cn:"书", en:"Book", em:"📖", meaning:"知识、秘密、学习。代表隐藏的信息或需要学习的东西。有些事情尚未完全向你展开。"},
+  {n:27, cn:"信", en:"Letter", em:"✉️", meaning:"消息、沟通、文件。代表一封信、一条消息或一次重要的沟通。注意查收信息。"},
+  {n:28, cn:"男人", en:"Man", em:"👨", meaning:"男性人物。代表你生活中的一个男性，或者你自身的阳性能量——理性、主动、果断。"},
+  {n:29, cn:"女人", en:"Woman", em:"👩", meaning:"女性人物。代表你生活中的一个女性，或者你自身的阴性能量——直觉、接纳、包容。"},
+  {n:30, cn:"百合", en:"Lily", em:"🌸", meaning:"安宁、成熟、和谐。代表平静、优雅和成熟。事情正在走向和谐，适合修身养性。"},
+  {n:31, cn:"太阳", en:"Sun", em:"☀️", meaning:"成功、活力、喜悦。最正面的牌之一。代表光明、成功和充沛的能量。一切都在向好。"},
+  {n:32, cn:"月亮", en:"Moon", em:"🌙", meaning:"直觉、梦境、潜意识。代表看不见的力量。相信你的直觉——有些事情不是表面看起来那样。"},
+  {n:33, cn:"钥匙", en:"Key", em:"🔑", meaning:"解锁、答案、契机。代表找到答案的关键。你需要的解决方案已经近在眼前了。"},
+  {n:34, cn:"鱼", en:"Fishes", em:"🐟", meaning:"财富、流动、丰盛。代表金钱、资源或情感的流动。事情正在向丰盛的方向发展。"},
+  {n:35, cn:"锚", en:"Anchor", em:"⚓", meaning:"稳定、安全感、停留。代表牢固的根基和安全感。适合做长远的计划和承诺。"},
+  {n:36, cn:"十字架", en:"Cross", em:"✝️", meaning:"负担、考验、信仰。代表一段需要承受的考验。但十字架也代表信念——你会因此变得更强大。"}
+];
+
+// ============================================================
+//  六爻 64 卦数据
+// ============================================================
+// 六爻64卦：键为6位二进制（从下到上，1=阳0=阴）
+const HEXA_NAMES = {
+  "000":"坤","001":"震","010":"坎","011":"兑","100":"艮","101":"离","110":"巽","111":"乾"
+};
+const HEXA_ELEM = {
+  "000":"地","001":"雷","010":"水","011":"泽","100":"山","101":"火","110":"风","111":"天"
+};
+
+// 卦名、卦辞、吉凶（下卦+上卦构成）
+const HEXA_KNOWN = {
+  "111111": { name:"乾为天", tag:"大吉", desc:"天行健，君子以自强不息。元亨利贞。刚健中正，自强不息。这是一个充满创造力和行动力的卦象，适宜主动出击。" },
+  "000000": { name:"坤为地", tag:"大吉", desc:"地势坤，君子以厚德载物。柔顺包容，厚德载物。适合以柔克刚，耐心等待。" },
+  "001010": { name:"水雷屯", tag:"中吉", desc:"屯，元亨利贞。勿用有攸往，利建侯。万事开头难，但初生之物充满生机。建议从小处着手，逐步建设。" },
+  "010100": { name:"山水蒙", tag:"小吉", desc:"蒙，亨。匪我求童蒙，童蒙求我。蒙昧初开，需要学习和引导。虚心求教方能开悟。" },
+  "010111": { name:"水天需", tag:"中吉", desc:"需，有孚，光亨，贞吉。利涉大川。等待是必要的。有诚心则事必成。不急不躁，天时将至。" },
+  "111010": { name:"天水讼", tag:"小凶", desc:"讼，有孚窒惕，中吉。终凶。利见大人，不利涉大川。争讼不是好事，能和解则和解。退一步海阔天空。" },
+  "000010": { name:"地水师", tag:"中吉", desc:"师，贞，丈人吉，无咎。率众之道，需德高望重者领之。团队需要强有力的领导。" },
+  "010000": { name:"水地比", tag:"吉", desc:"比，吉。原筮，元永贞，无咎。亲附与团结是吉利的。与人为善，则众人归附。" },
+  "110111": { name:"风天小畜", tag:"小吉", desc:"小畜，亨。密云不雨，自我西郊。力量尚小，需要蓄积。暂缓行动，养精蓄锐。" },
+  "111011": { name:"天泽履", tag:"平", desc:"履虎尾，不咥人，亨。履者，礼也。谨慎行事，如履薄冰却能安然无恙。按规矩办事就能平安。" },
+  "000111": { name:"地天泰", tag:"大吉", desc:"泰，小往大来，吉亨。天地交而万物通。阴阳和谐，万事通达。非常好的卦象。" },
+  "111000": { name:"天地否", tag:"小凶", desc:"否之匪人，不利君子贞，大往小来。天地不交，万物不通。暂时不顺，但否极泰来，等待转机。" },
+  "101111": { name:"天火同人", tag:"大吉", desc:"同人于野，亨。利涉大川，利君子贞。志同道合，众志成城。人际和谐，合作顺利。" },
+  "111101": { name:"火天大有", tag:"大吉", desc:"大有，元亨。丰收之象，拥有丰盛的资源和成就。此时宜分享成果，惠及他人。" },
+  "000100": { name:"地山谦", tag:"大吉", desc:"谦，亨，君子有终。谦虚是最持久的品德。满招损，谦受益。保持谦逊则万事亨通。" },
+  "001000": { name:"雷地豫", tag:"中吉", desc:"豫，利建侯行师。安乐和悦之象。但不可过分沉溺。适宜做规划和部署。" },
+  "100110": { name:"泽雷随", tag:"中吉", desc:"随，元亨利贞，无咎。随顺时势，灵活应变。不要固执己见，顺其自然则万事通达。" },
+  "011001": { name:"山风蛊", tag:"平", desc:"蛊，元亨。利涉大川。先甲三日，后甲三日。整顿弊端，重新出发。有烂摊子需要收拾。" },
+  "000011": { name:"地泽临", tag:"中吉", desc:"临，元亨利贞。至于八月有凶。面临大事，亲临其境。以真诚和智慧应对，则吉。" },
+  "110000": { name:"风地观", tag:"平", desc:"观，盥而不荐，有孚颙若。观察与审慎。不要急于行动，先看清楚再做决定。" },
+  "100101": { name:"火雷噬嗑", tag:"平", desc:"噬嗑，亨。利用狱。排除障碍，清除隔阂。有些事情需要果断处理，不能含糊。" },
+  "101001": { name:"山火贲", tag:"小吉", desc:"贲，亨。小利有攸往。文饰与修饰。外在的装饰和礼仪有其价值，但不要过分追求形式。" },
+  "000001": { name:"山地剥", tag:"凶", desc:"剥，不利有攸往。剥落与衰退。事物在衰落中，不宜轻举妄动。守住根本，等待转机。" },
+  "100000": { name:"地雷复", tag:"中吉", desc:"复，亨。出入无疾，朋来无咎。七日来复。一阳来复，万物复苏。黑暗即将过去，黎明就在眼前。" },
+  "111001": { name:"山天大畜", tag:"大吉", desc:"大畜，利贞。不家食吉，利涉大川。积蓄了充足的力量，可以大展宏图。但要保持正直。" },
+  "100111": { name:"天雷无妄", tag:"中吉", desc:"无妄，元亨利贞。其匪正有眚，不利有攸往。顺其自然，不要妄为。保持本真，不刻意则不犯错。" },
+  "100001": { name:"山雷颐", tag:"中吉", desc:"颐，贞吉。观颐，自求口实。养身养德，自食其力。关注健康和修养，不依赖他人。" },
+  "011110": { name:"泽风大过", tag:"平", desc:"大过，栋桡。利有攸往，亨。过度与超常。事情超出了常态，但未必是坏事。需要非常之举应对非常之境。" },
+  "010110": { name:"坎为水", tag:"小凶", desc:"坎，习坎，有孚，维心亨。行有尚。险中之险。面对重重困难，但内心保持诚信则终能度过。" },
+  "101101": { name:"离为火", tag:"中吉", desc:"离，利贞，亨。畜牝牛，吉。依附与光明。如火焰般热情明亮，但需要依附于正道。" },
+  "001110": { name:"泽山咸", tag:"中吉", desc:"咸，亨，利贞。取女吉。感应与互动。人与人之间的情感交流顺畅。心有灵犀。" },
+  "011100": { name:"雷风恒", tag:"中吉", desc:"恒，亨，无咎。利贞。利有攸往。恒久之道。坚持和稳定是成功的关键。不宜频繁变动。" },
+  "111100": { name:"天山遁", tag:"小吉", desc:"遁，亨。小利贞。退避与隐退。形势不利时，退也是智慧。退一步海阔天空。" },
+  "001111": { name:"雷天大壮", tag:"大吉", desc:"大壮，利贞。阳盛壮，势不可挡。但壮而不可妄动，以正道守之。力量要用对地方。" },
+  "000101": { name:"火地晋", tag:"大吉", desc:"晋，康侯用锡马蕃庶，昼日三接。前进与晋升。如旭日东升，事业在进步中。顺风顺水。" },
+  "101000": { name:"地火明夷", tag:"小凶", desc:"明夷，利艰贞。光明受伤。暂时处于低谷或受到压制。坚守正道，黑暗终将过去。" },
+  "101011": { name:"风火家人", tag:"中吉", desc:"家人，利女贞。家庭和睦之道。家是温暖的港湾。关注家庭关系则会带来好运。" },
+  "001011": { name:"火泽睽", tag:"平", desc:"睽，小事吉。分歧和对立。意见不同是正常的，求同存异即可。小事可成，大事需谨慎。" },
+  "010001": { name:"雷水解", tag:"中吉", desc:"解，利西南。无所往，其来复吉。有攸往，夙吉。困难正在化解。春天来了，冰雪消融。" },
+  "110001": { name:"山泽损", tag:"平", desc:"损，有孚，元吉，无咎。可贞。利有攸往。损失未必是坏事。有失必有得，损己利人在长远看是福。" },
+  "100011": { name:"风雷益", tag:"大吉", desc:"益，利有攸往。利涉大川。增益与收获。付出得到了回报。适合积极进取。" },
+  "011111": { name:"泽天夬", tag:"平", desc:"夬，扬于王庭。孚号有厉。告自邑，不利即戎。利有攸往。决断之象。当断则断，犹豫不决反而坏事。" },
+  "111110": { name:"天风姤", tag:"平", desc:"姤，女壮，勿用取女。邂逅与相遇。偶然的相遇可能带来意想不到的缘分或机遇。" },
+  "011000": { name:"泽地萃", tag:"大吉", desc:"萃，亨。王假有庙。利见大人。亨。利贞。聚集之象。人才汇聚，群英荟萃。适合团队合作。" },
+  "000110": { name:"地风升", tag:"大吉", desc:"升，元亨。用见大人，勿恤。南征吉。上升与进步。如树木生长，步步高升。持续努力必有成就。" },
+  "010010": { name:"泽水困", tag:"小凶", desc:"困，亨。贞，大人吉，无咎。有言不信。困顿与困境。暂时的艰难，但君子固穷。保持信念，终会走出困境。" },
+  "011010": { name:"水风井", tag:"中吉", desc:"井，改邑不改井，无丧无得。往来井井。稳定而恒久的资源。内心的源泉不会枯竭。" },
+  "101110": { name:"泽火革", tag:"中吉", desc:"革，己日乃孚。元亨利贞。悔亡。变革与革新。旧的不去新的不来。变革虽然痛苦，但势在必行。" },
+  "011101": { name:"火风鼎", tag:"大吉", desc:"鼎，元吉，亨。象征创造与转化。把新的想法转化为现实的成果。" },
+  "001001": { name:"震为雷", tag:"平", desc:"震，亨。震来虩虩，笑言哑哑。震惊百里，不丧匕鬯。震动带来警醒。突如其来的变化让人不安，但要镇定。" },
+  "100100": { name:"艮为山", tag:"平", desc:"艮，艮其背，不获其身。行其庭，不见其人。停止与静止。该停的时候就要停下来。知止而后有定。" },
+  "110100": { name:"风山渐", tag:"中吉", desc:"渐，女归吉。利贞。循序渐进。事物在慢慢发展中。不要急躁，一步一步来。" },
+  "101100": { name:"雷泽归妹", tag:"小凶", desc:"归妹，征凶，无攸利。有些事情看似美好但实际并非如此。需要重新审视。" },
+  "001101": { name:"雷火丰", tag:"大吉", desc:"丰，亨。王假之，勿忧。宜日中。丰盛与繁荣。达到了鼎盛时期，但盛极必衰，要居安思危。" },
+  "110110": { name:"巽为风", tag:"中吉", desc:"巽，小亨。利有攸往。利见大人。谦逊与顺服。如风一般，顺势而为不拘泥。柔顺中自有力量。" },
+  "011011": { name:"兑为泽", tag:"中吉", desc:"兑，亨，利贞。喜悦与沟通。开口笑，说好话。通过愉悦的沟通可以解决问题。" },
+  "010011": { name:"风水涣", tag:"平", desc:"涣，亨。王假有庙。利涉大川。涣散与疏散。人心涣散时需要重新凝聚。有时散开才能再聚。" },
+  "110010": { name:"水泽节", tag:"中吉", desc:"节，亨。苦节不可贞。节制与调节。凡事有度，过犹不及。适当的节制是美德，过度则痛苦。" },
+  "110011": { name:"风泽中孚", tag:"大吉", desc:"中孚，豚鱼吉。利涉大川。利贞。内心诚信。诚信可以感动一切。真心诚意则无事不成。" },
+  "001100": { name:"雷山小过", tag:"小吉", desc:"小过，亨，利贞。可小事，不可大事。小小的过度无伤大雅。不适合做大决定。" },
+  "010101": { name:"水火既济", tag:"中吉", desc:"既济，亨小。利贞。初吉终乱。已经成功，事情已经完成。但要小心盛极转衰。" },
+  "101010": { name:"火水未济", tag:"平", desc:"未济，亨。小狐汔济，濡其尾，无攸利。尚未完成，乾坤未定。一切皆有可能。" },
+  "100010": { name:"水山蹇", tag:"小凶", desc:"蹇，利西南，不利东北。利见大人，贞吉。前路艰难，但并非无解。适当寻求帮助，知难而进。" }
+};
+// 对于未知键，自动生成一个合理的卦象解读
+function getHexagram(bin) {
+  if (HEXA_KNOWN[bin]) return HEXA_KNOWN[bin];
+  const low3 = bin.slice(0,3), up3 = bin.slice(3);
+  const lowerName = HEXA_NAMES[low3] || "未名";
+  const upperName = HEXA_NAMES[up3] || "未名";
+  const lowerEl = HEXA_ELEM[low3] || "无";
+  const upperEl = HEXA_ELEM[up3] || "无";
+  const tags = ["大吉","中吉","小吉","平","小凶","凶"];
+  const descs = [
+    "天地交泰，万物通达。此卦为吉兆，顺应自然则诸事可成。",
+    "阴阳调和，事有可为。保持中正之心，不急不躁，自然顺遂。",
+    "小有波折，但无大碍。谨慎行事，则可化险为夷。",
+    "此卦平平，无吉无凶。宜静观其变，不宜轻举妄动。",
+    "暂时不顺，但否极泰来。守住本心，等待转机。",
+    "形势严峻，但危机中亦有转机。沉着应对，终能化解。"
+  ];
+  const idx = Math.floor(Math.random() * 6);
+  return {
+    name: `${upperEl}${lowerEl}·杂卦`,
+    tag: tags[idx],
+    desc: `${upperName}在上，${lowerName}在下。${descs[idx]}`
+  };
+}
+
+// ============================================================
+//  帮助函数
+// ============================================================
+function showView(view) {
+  document.getElementById('view-main').classList.add('hidden');
+  document.getElementById('view-renman').classList.add('hidden');
+  document.getElementById('view-liuyao').classList.add('hidden');
+  document.getElementById('view-intro').classList.add('hidden');
+  document.getElementById('view-history').classList.add('hidden');
+  if (view === 'main') document.getElementById('view-main').classList.remove('hidden');
+  else if (view === 'renman') document.getElementById('view-renman').classList.remove('hidden');
+  else if (view === 'liuyao') document.getElementById('view-liuyao').classList.remove('hidden');
+  else if (view === 'intro') document.getElementById('view-intro').classList.remove('hidden');
+  else if (view === 'history') { renderHistory(); document.getElementById('view-history').classList.remove('hidden'); }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+  localStorage.setItem('suansuan_modal_seen', '1');
+}
+
+// 检查弹窗
+if (localStorage.getItem('suansuan_modal_seen')) {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+// ============================================================
+//  设置 & DeepSeek API
+// ============================================================
+function openSettings() {
+  const s = getSettings();
+  document.getElementById('api-key-input').value = s.apiKey || '';
+  document.getElementById('ai-toggle').checked = s.aiEnabled || false;
+  document.getElementById('settings-status').style.display = 'none';
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+function getSettings() {
+  try { return JSON.parse(localStorage.getItem('suansuan_settings')) || {}; }
+  catch(e) { return {}; }
+}
+function saveSettings() {
+  const apiKey = document.getElementById('api-key-input').value.trim();
+  const aiEnabled = document.getElementById('ai-toggle').checked;
+  localStorage.setItem('suansuan_settings', JSON.stringify({ apiKey, aiEnabled }));
+  const status = document.getElementById('settings-status');
+  status.textContent = '✓ 已保存';
+  status.className = 'settings-status ok';
+  status.style.display = 'block';
+  setTimeout(closeSettings, 800);
+}
+async function testApiKey() {
+  const apiKey = document.getElementById('api-key-input').value.trim();
+  if (!apiKey) { showSettingsStatus('请先输入 API Key', 'err'); return; }
+  showSettingsStatus('测试中……', 'ok');
+  try {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{role:'user',content:'hello'}], max_tokens: 10, stream: false })
+    });
+    if (res.ok) showSettingsStatus('✓ 连接成功', 'ok');
+    else showSettingsStatus('✗ ' + (await res.text()).slice(0, 80), 'err');
+  } catch(e) { showSettingsStatus('✗ 网络错误: ' + e.message, 'err'); }
+}
+function showSettingsStatus(msg, type) {
+  const s = document.getElementById('settings-status');
+  s.textContent = msg; s.className = 'settings-status ' + type; s.style.display = 'block';
+}
+async function callDeepSeek(prompt, systemMsg, userMsg) {
+  const s = getSettings();
+  if (!s.apiKey || !s.aiEnabled) return null;
+  try {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.apiKey },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {role:'system', content: systemMsg},
+          {role:'user', content: userMsg + (prompt ? '\n用户问的是：「' + prompt + '」' : '')}
+        ],
+        max_tokens: 300, temperature: 0.8, stream: false
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch(e) { return null; }
+}
+
+// ============================================================
+//  雷诺曼逻辑
+// ============================================================
+function drawRenman() {
+  const btn = document.querySelector('#renman-area .action-btn');
+  const progress = document.getElementById('renman-progress');
+  const fill = document.getElementById('renman-fill');
+  const cardsDiv = document.getElementById('renman-cards');
+  const actions = document.getElementById('renman-actions');
+  const q = document.getElementById('renman-question').value.trim();
+
+  // 重置
+  cardsDiv.innerHTML = '';
+  actions.style.display = 'none';
+  btn.disabled = true;
+  progress.classList.add('active');
+
+  // 随机抽3张不重复
+  const deck = [...RENMAN_CARDS];
+  window._lastRenmanPicks = [];  // 存全局供翻牌用
+  for (let i = 0; i < 3; i++) {
+    const idx = Math.floor(Math.random() * deck.length);
+    window._lastRenmanPicks.push(deck.splice(idx, 1)[0]);
+  }
+
+  // 进度条动画
+  let p = 0;
+  const interval = setInterval(() => {
+    p += Math.random() * 15 + 5;
+    if (p >= 100) {
+      p = 100;
+      clearInterval(interval);
+      setTimeout(() => {
+        progress.classList.remove('active');
+        btn.disabled = false;
+        renderRenmanCards(window._lastRenmanPicks, q);
+        actions.style.display = 'block';
+      }, 400);
+    }
+    fill.style.width = p + '%';
+  }, 120);
+}
+
+function renderRenmanCards(cards, question) {
+  const div = document.getElementById('renman-cards');
+  const positions = ['过去 · 现状', '此刻 · 核心', '未来 · 提示'];
+  div.innerHTML = cards.map((c, i) => `
+    <div class="renman-card" onclick="flipCard(${i})">
+      <div class="card-back">❓</div>
+      <span class="card-num">${c.n}</span>
+      <div class="card-pattern">${c.em}</div>
+      <div class="card-name">${c.cn}</div>
+      <div class="card-name-en">${c.en}</div>
+      <div style="font-size:0.8rem;color:#c9a96e;margin-top:0.2rem;">${positions[i]}</div>
+      <div class="card-meaning">${c.meaning}${question ? '<br><br><em>关于「' + question + '」</em>' : ''}</div>
+    </div>
+  `).join('');
+}
+
+function flipCard(idx) {
+  const cards = document.querySelectorAll('.renman-card');
+  const el = cards[idx];
+  if (!el || (el.classList.contains('flipped') && el.classList.contains('revealed'))) return;
+  el.classList.add('flipped');
+  setTimeout(() => { el.classList.add('revealed'); }, 300);
+
+  // 存历史
+  const card = window._lastRenmanPicks[idx];
+  if (!card) return;
+  const q = document.getElementById('renman-question').value.trim() || '（未填写问题）';
+  const positions = ['过去·现状', '此刻·核心', '未来·提示'];
+  addHistory({
+    type: '雷诺曼',
+    question: q,
+    result: `${card.cn}（${positions[idx]}）：${card.meaning.slice(0, 30)}…`
+  });
+
+  // AI 解读
+  const s = getSettings();
+  if (s.aiEnabled && s.apiKey) {
+    const meaningEl = el.querySelector('.card-meaning');
+    meaningEl.innerHTML = card.meaning + '<div class="ai-loading">✨ AI 解读中……</div>';
+    const sysMsg = '你是占卜师，根据用户抽到的雷诺曼牌写一段温暖简短的解读（50-80字）。直接以占卜师口吻写，不提AI。';
+    const userMsg = `第${card.n}号牌「${card.cn}（${card.en}）」。位置：${positions[idx]}。含义：${card.meaning}`;
+    callDeepSeek(q, sysMsg, userMsg).then(ai => {
+      if (ai) meaningEl.innerHTML = card.meaning + '<br><br><span class="ai-badge">AI</span> ' + ai;
+      else meaningEl.innerHTML = card.meaning;
+    });
+  }
+}
+
+// ============================================================
+//  六爻逻辑
+// ============================================================
+function startLiuyao() {
+  const btn = document.querySelector('#coin-area .action-btn');
+  const stepDots = document.querySelectorAll('.step-dot');
+  const coin = document.getElementById('coin-ani');
+  const progress = document.getElementById('liuyao-progress');
+  const fill = document.getElementById('liuyao-fill');
+  const resultDiv = document.getElementById('hexagram-result');
+  const q = document.getElementById('liuyao-question').value.trim();
+
+  btn.disabled = true;
+  resultDiv.classList.add('hidden');
+  resultDiv.innerHTML = '';
+  coin.classList.remove('hidden');
+  progress.classList.add('active');
+  stepDots.forEach(d => d.className = 'step-dot');
+
+  // 随机生成六爻（从下到上）
+  const lines = [];
+  for (let i = 0; i < 6; i++) {
+    // 三枚硬币：0（全背）- 老阴，1-2（一背二字或二背一字）- 少阳/少阴，3（全字）- 老阳
+    const coins = [Math.random() < 0.5 ? 0 : 1, Math.random() < 0.5 ? 0 : 1, Math.random() < 0.5 ? 0 : 1];
+    const sum = coins.reduce((a, b) => a + b, 0);
+    // 1背=少阳(阳), 2背=少阴(阴), 3背=老阳(阳+变), 0背=老阴(阴+变)
+    let yang;
+    if (sum === 1) yang = 1;      // 少阳
+    else if (sum === 2) yang = 0; // 少阴
+    else if (sum === 3) yang = 1; // 老阳（动爻）
+    else yang = 0;                // 老阴（动爻）
+    lines.push(yang);
+  }
+
+  // 动画摇卦
+  let step = 0;
+  const totalSteps = 6;
+  coin.classList.add('spinning');
+
+  const interval = setInterval(() => {
+    step++;
+    coin.classList.remove('spinning');
+    // 暂时显示当前爻
+    const y = lines[step - 1];
+    coin.textContent = y ? '⚊' : '⚋';
+    stepDots[step - 1].classList.add('done');
+
+    if (step < totalSteps) {
+      setTimeout(() => {
+        coin.classList.add('spinning');
+        coin.textContent = '☯';
+      }, 300);
+      fill.style.width = (step / totalSteps * 100) + '%';
+    } else {
+      clearInterval(interval);
+      setTimeout(() => {
+        coin.classList.add('hidden');
+        progress.classList.remove('active');
+        btn.disabled = false;
+        showHexagram(lines, q);
+      }, 500);
+    }
+  }, 700);
+}
+
+function showHexagram(lines, question) {
+  // lines是从下到上的6个爻 [line1(底), ..., line6(顶)]
+  const binary = lines.map(l => l ? '1' : '0').join('');
+  const hexagram = getHexagram(binary);
+  const resultDiv = document.getElementById('hexagram-result');
+
+  const lineHtml = [...lines].reverse().map((l, i) => `
+    <div class="hexagram-line">
+      ${l ? '<div class="yang-line"></div>' : '<div class="yin-line"><span class="seg"></span><span class="seg"></span></div>'}
+    </div>
+  `).join('');
+
+  const name = hexagram ? hexagram.name : '未知卦';
+  const desc = hexagram ? hexagram.desc : '无法解读此卦象。';
+  const tag = hexagram ? hexagram.tag : '';
+
+  resultDiv.innerHTML = `
+    <div class="hexagram-symbol">${lineHtml}</div>
+    <div class="hexagram-name">${name} <span style="font-size:0.8rem;color:#b8a898;">${tag}</span></div>
+    <div class="hexagram-reading">
+      <div class="translation">${desc}</div>
+      ${question ? '<div class="ai-take" id="hexagram-ai-take"><strong>关于「' + question + '」：</strong><span class="ai-loading">✨ AI 解读中……</span></div>' : ''}
+    </div>
+    <div class="btn-group">
+      <button class="secondary-btn" onclick="startLiuyao()">再算一次</button>
+      <button class="secondary-btn" onclick="showView('main')">返回</button>
+    </div>
+  `;
+
+  resultDiv.classList.remove('hidden');
+
+  // AI 解读
+  const s = getSettings();
+  if (s.aiEnabled && s.apiKey && question) {
+    const sysMsg = '你是易经占卜师，为用户解读卦象。用温暖简洁的中文写一段话（50-80字）。直接以占卜师口吻写，不提AI。';
+    const userMsg = `卦象：${name}（${tag}）。卦辞：${desc}`;
+    callDeepSeek(question, sysMsg, userMsg).then(ai => {
+      const el = document.getElementById('hexagram-ai-take');
+      if (el) el.innerHTML = ai ? '<strong>关于「' + question + '」：</strong><span class="ai-badge">AI</span> ' + ai : '<strong>关于「' + question + '」：</strong>' + generateAiTake(desc, tag, question);
+    });
+  } else if (question) {
+    const el = document.getElementById('hexagram-ai-take');
+    if (el) el.innerHTML = '<strong>关于「' + question + '」：</strong>' + generateAiTake(desc, tag, question);
+  }
+
+  // 存历史
+  addHistory({
+    type: '六爻',
+    question: question || '（未填问题）',
+    result: `${name}：${desc.slice(0, 40)}…`
+  });
+}
+
+function generateAiTake(desc, tag, question) {
+  const takes = [
+    `从卦象来看，${desc.slice(0, 20)}……对于你关心的「${question}」，这个指引提示你以顺应自然的态度去面对。`,
+    `「${question}」——这个卦给你的启示是：${desc.slice(0, 30)}……不妨以此反思你的处境。`,
+    `你问「${question}」，卦曰：${desc.slice(0, 25)}……静心体会，自有答案。`
+  ];
+  return takes[Math.floor(Math.random() * takes.length)];
+}
+
+// ============================================================
+//  历史记录
+// ============================================================
+function addHistory(item) {
+  let history = JSON.parse(localStorage.getItem('suansuan_history') || '[]');
+  item.time = new Date().toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  history.unshift(item);
+  if (history.length > 50) history = history.slice(0, 50);
+  localStorage.setItem('suansuan_history', JSON.stringify(history));
+}
+
+function renderHistory() {
+  const div = document.getElementById('history-list');
+  const history = JSON.parse(localStorage.getItem('suansuan_history') || '[]');
+  if (!history.length) {
+    div.innerHTML = '<div class="empty-hint">还没有占卜记录<br>去算一卦吧 ☯</div>';
+    return;
+  }
+  div.innerHTML = history.map(h => `
+    <div class="history-item">
+      <span class="h-type">${h.type}</span>
+      <span class="h-time">${h.time}</span>
+      <div class="h-question">${h.question}</div>
+      <div class="h-result">${h.result}</div>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  if (confirm('确定清空所有历史记录？')) {
+    localStorage.removeItem('suansuan_history');
+    renderHistory();
+  }
+}
+</script>
+</body>
+</html>
