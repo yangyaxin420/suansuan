@@ -175,42 +175,52 @@ body {
 }
 .progress-label { font-size: 0.8rem; color: #b8a898; }
 
-/* ===== 雷诺曼牌 ===== */
+/* ===== 雷诺曼牌（翻转效果） ===== */
 .renman-area { text-align: center; min-height: 300px; }
 .cards-row {
   display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;
   margin: 1.5rem 0;
 }
 .renman-card {
-  width: 130px; min-height: 180px;
-  background: #faf6ef; border: 1px solid #d4c5a9;
-  border-radius: 3px; cursor: pointer;
-  transition: all 0.3s;
+  width: 130px; height: 200px;
+  perspective: 800px; cursor: pointer;
+}
+.renman-card-inner {
+  position: relative; width: 100%; height: 100%;
+  transition: transform 0.6s ease;
+  transform-style: preserve-3d;
+}
+.renman-card.flipped .renman-card-inner {
+  transform: rotateY(180deg);
+}
+.renman-card-front, .renman-card-back {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  border-radius: 3px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 1rem 0.6rem;
-  position: relative;
+  padding: 0.8rem 0.5rem;
+  border: 1px solid #d4c5a9;
 }
-.renman-card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-.renman-card.active-detail { border-color: #c9a96e; background: #f8f2e8; }
-.card-pattern { font-size: 2.5rem; margin-bottom: 0.3rem; }
-.card-name { font-size: 1rem; color: #5a4a3a; margin-bottom: 0.1rem; }
+.renman-card-front {
+  background: #faf6ef;
+  z-index: 2;
+}
+.renman-card-back {
+  background: #f8f2e8;
+  transform: rotateY(180deg);
+  justify-content: flex-start;
+  padding-top: 1.2rem;
+  overflow-y: auto;
+}
+.renman-card-back .back-meaning {
+  font-size: 0.78rem; color: #6a5a4a; line-height: 1.6;
+  text-align: left; padding: 0 0.3rem;
+}
+.card-pattern-front { font-size: 2.5rem; margin-bottom: 0.3rem; }
+.card-name { font-size: 1rem; color: #5a4a3a; }
 .card-num { font-size: 0.7rem; color: #c8b8a8; position: absolute; top: 6px; left: 8px; }
-.card-sub { font-size: 0.75rem; color: #c9a96e; margin-top: 0.2rem; letter-spacing: 0.05em; }
-
-/* ===== 雷诺曼牌义详情 ===== */
-.renman-details {
-  max-width: 600px; margin: 0 auto 1rem;
-  background: #faf6ef; border: 1px solid #e8ddd0; border-radius: 2px;
-  padding: 0; overflow: hidden;
-  max-height: 0; transition: max-height 0.3s, padding 0.3s;
-}
-.renman-details.open { max-height: 300px; padding: 1rem; }
-.renman-details .detail-title { font-size: 1rem; color: #5a4a3a; margin-bottom: 0.3rem; }
-.renman-details .detail-meaning { font-size: 0.85rem; color: #7a6a5a; line-height: 1.7; }
-.renman-details .detail-close {
-  float: right; background: none; border: none; font-size: 1rem;
-  cursor: pointer; color: #b8a898; padding: 0 0.2rem;
-}
+.card-position { font-size: 0.75rem; color: #c9a96e; margin-top: 0.2rem; letter-spacing: 0.05em; }
+.back-label { font-size: 0.7rem; color: #c9a96e; margin-bottom: 0.4rem; }
 
 /* ===== 雷诺曼综合解读 ===== */
 .renman-reading {
@@ -417,10 +427,10 @@ body {
         <div class="progress-label">翻开命运的一页……</div>
       </div>
       <div class="cards-row" id="renman-cards"></div>
-      <div class="renman-details" id="renman-detail"></div>
       <div class="renman-reading" id="renman-reading">
         <div class="reading-label">✨ 三张牌</div>
         <div class="reading-text" id="renman-reading-text"></div>
+        <div style="text-align:right;margin-top:0.5rem;"><button class="secondary-btn" onclick="downloadReading()" style="font-size:0.75rem;padding:0.2rem 0.8rem;">📥 下载记录</button></div>
       </div>
       <div class="btn-group" id="renman-actions" style="display:none;">
         <button class="secondary-btn" onclick="drawRenman()">再算一次</button>
@@ -779,11 +789,19 @@ function renderRenmanCards(cards, question) {
   const div = document.getElementById('renman-cards');
   const positions = ['过去 · 现状', '此刻 · 核心', '未来 · 提示'];
   div.innerHTML = cards.map((c, i) => `
-    <div class="renman-card" onclick="showRenmanDetail(${i})">
-      <span class="card-num">${c.n}</span>
-      <div class="card-pattern">${c.em}</div>
-      <div class="card-name">${c.cn}</div>
-      <div class="card-sub">${positions[i]}</div>
+    <div class="renman-card" onclick="flipRenmanCard(this)">
+      <div class="renman-card-inner">
+        <div class="renman-card-front">
+          <span class="card-num">${c.n}</span>
+          <div class="card-pattern-front">${c.em}</div>
+          <div class="card-name">${c.cn}</div>
+          <div class="card-position">${positions[i]}</div>
+        </div>
+        <div class="renman-card-back">
+          <div class="back-label">${c.cn} · ${c.en}</div>
+          <div class="back-meaning">${c.meaning}</div>
+        </div>
+      </div>
     </div>
   `).join('');
 
@@ -829,35 +847,8 @@ function generateCombinedReading(cards, question) {
   return `${starters[Math.floor(Math.random() * starters.length)]}${names}。${briefs}。${tails[Math.floor(Math.random() * tails.length)]}${question ? '<br><br><em>关于「' + question + '」</em>' : ''}`;
 }
 
-function showRenmanDetail(idx) {
-  const cards = document.querySelectorAll('.renman-card');
-  const detailDiv = document.getElementById('renman-detail');
-  const card = window._lastRenmanPicks[idx];
-
-  // 如果已打开同一个，关闭它
-  if (detailDiv.classList.contains('open') && detailDiv.dataset.idx == idx) {
-    detailDiv.classList.remove('open');
-    cards[idx].classList.remove('active-detail');
-    return;
-  }
-
-  cards.forEach((c, i) => {
-    c.classList.toggle('active-detail', i === idx);
-  });
-
-  const positions = ['过去 · 现状', '此刻 · 核心', '未来 · 提示'];
-  detailDiv.innerHTML = `
-    <button class="detail-close" onclick="closeRenmanDetail()">✕</button>
-    <div class="detail-title">${card.em} ${card.cn} · ${positions[idx]}</div>
-    <div class="detail-meaning">${card.meaning}</div>
-  `;
-  detailDiv.dataset.idx = idx;
-  detailDiv.classList.add('open');
-}
-
-function closeRenmanDetail() {
-  document.getElementById('renman-detail').classList.remove('open');
-  document.querySelectorAll('.renman-card').forEach(c => c.classList.remove('active-detail'));
+function flipRenmanCard(el) {
+  el.classList.toggle('flipped');
 }
 
 // ============================================================
@@ -951,6 +942,7 @@ function showHexagram(lines, question) {
     <div class="btn-group">
       <button class="secondary-btn" onclick="startLiuyao()">再算一次</button>
       <button class="secondary-btn" onclick="showView('main')">返回</button>
+      <button class="secondary-btn" onclick="downloadHexagramReading()" style="font-size:0.75rem;padding:0.2rem 0.8rem;">📥 下载</button>
     </div>
   `;
 
@@ -1020,6 +1012,40 @@ function clearHistory() {
     localStorage.removeItem('suansuan_history');
     renderHistory();
   }
+}
+
+// ============================================================
+//  下载
+// ============================================================
+function downloadReading() {
+  const cards = window._lastRenmanPicks;
+  if (!cards || !cards.length) return;
+  const names = cards.map(c => c.cn).join('、');
+  const meanings = cards.map((c, i) => `【${c.cn}】${c.meaning}`).join('\n');
+  const q = document.getElementById('renman-question').value.trim() || '（未填问题）';
+  const text = `算算 · 雷诺曼占卜\n━━━━━━━━━━━━━━\n问题：${q}\n抽到：${names}\n━━━━━━━━━━━━━━\n${meanings}\n━━━━━━━━━━━━━━\n${document.getElementById('renman-reading-text').textContent}\n${new Date().toLocaleString('zh-CN')}`;
+  downloadTxt(text, '雷诺曼_' + new Date().toISOString().slice(0,10) + '.txt');
+}
+
+function downloadHexagramReading() {
+  const el = document.getElementById('hexagram-result');
+  const name = el.querySelector('.hexagram-name')?.textContent || '';
+  const reading = el.querySelector('.translation')?.textContent || '';
+  const aiTake = el.querySelector('.ai-take')?.textContent || '';
+  const q = document.getElementById('liuyao-question').value.trim() || '（未填问题）';
+  const text = `算算 · 六爻占卜\n━━━━━━━━━━━━━━\n问题：${q}\n${name}\n━━━━━━━━━━━━━━\n${reading}\n${aiTake}\n${new Date().toLocaleString('zh-CN')}`;
+  downloadTxt(text, '六爻_' + new Date().toISOString().slice(0,10) + '.txt');
+}
+
+function downloadTxt(text, filename) {
+  const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
 }
 </script>
 </body>
