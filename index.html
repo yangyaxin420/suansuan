@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>算算</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c9a96e">
 <style>
 /* ===== 全局 ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -182,7 +184,7 @@ body {
   margin: 1.5rem 0;
 }
 .renman-card {
-  width: 130px; height: 200px;
+  width: 150px; height: 150px;
   perspective: 800px; cursor: pointer;
 }
 .renman-card-inner {
@@ -216,11 +218,11 @@ body {
   font-size: 0.78rem; color: #6a5a4a; line-height: 1.6;
   text-align: left; padding: 0 0.3rem;
 }
-.card-pattern-front { font-size: 2.5rem; margin-bottom: 0.3rem; }
-.card-name { font-size: 1rem; color: #5a4a3a; }
-.card-num { font-size: 0.7rem; color: #c8b8a8; position: absolute; top: 6px; left: 8px; }
-.card-position { font-size: 0.75rem; color: #c9a96e; margin-top: 0.2rem; letter-spacing: 0.05em; }
-.back-label { font-size: 0.7rem; color: #c9a96e; margin-bottom: 0.4rem; }
+.card-pattern-front { font-size: 2rem; margin-bottom: 0.2rem; }
+.card-name { font-size: 0.9rem; color: #5a4a3a; }
+.card-num { font-size: 0.65rem; color: #c8b8a8; position: absolute; top: 5px; left: 7px; }
+.card-position { font-size: 0.7rem; color: #c9a96e; margin-top: 0.15rem; letter-spacing: 0.05em; }
+.back-label { font-size: 0.65rem; color: #c9a96e; margin-bottom: 0.3rem; }
 
 /* ===== 雷诺曼综合解读 ===== */
 .renman-reading {
@@ -338,11 +340,12 @@ body {
 
 /* ===== 响应式 ===== */
 @media (max-width: 600px) {
-  .card-entry { width: 160px; height: 220px; }
-  .card-entry .icon { font-size: 2.2rem; }
-  .renman-card { width: 100px; min-height: 160px; padding: 0.6rem; }
-  .card-pattern { font-size: 1.8rem; }
-  .cards-row { gap: 1rem; }
+  .card-entry { width: 150px; height: 180px; }
+  .card-entry .icon { font-size: 2rem; }
+  .renman-card { width: 110px; height: 110px; }
+  .renman-card-back .back-meaning { font-size: 0.7rem; }
+  .card-pattern-front { font-size: 1.5rem; }
+  .cards-row { gap: 0.8rem; }
   .main-title { font-size: 2rem; }
   .modal { padding: 1.5rem; }
 }
@@ -379,6 +382,10 @@ body {
         使用 AI 解读
       </label>
       <div class="settings-hint">开启后，占卜结果会用 DeepSeek 生成个性化解读</div>
+    </div>
+    <div class="settings-row" style="text-align:center;">
+      <button class="secondary-btn" onclick="showInstallGuide()" style="font-size:0.85rem;">📱 添加到手机</button>
+      <div id="install-guide" style="display:none;margin-top:0.5rem;font-size:0.8rem;color:#8b7a6a;background:#f0e8d8;padding:0.5rem;border-radius:2px;"></div>
     </div>
     <div class="settings-status" id="settings-status">已保存</div>
     <div class="btn-group" style="margin-top:1.5rem;">
@@ -430,7 +437,6 @@ body {
       <div class="renman-reading" id="renman-reading">
         <div class="reading-label">✨ 三张牌</div>
         <div class="reading-text" id="renman-reading-text"></div>
-        <div style="text-align:right;margin-top:0.5rem;"><button class="secondary-btn" onclick="downloadReading()" style="font-size:0.75rem;padding:0.2rem 0.8rem;">📥 下载记录</button></div>
       </div>
       <div class="btn-group" id="renman-actions" style="display:none;">
         <button class="secondary-btn" onclick="drawRenman()">再算一次</button>
@@ -942,7 +948,6 @@ function showHexagram(lines, question) {
     <div class="btn-group">
       <button class="secondary-btn" onclick="startLiuyao()">再算一次</button>
       <button class="secondary-btn" onclick="showView('main')">返回</button>
-      <button class="secondary-btn" onclick="downloadHexagramReading()" style="font-size:0.75rem;padding:0.2rem 0.8rem;">📥 下载</button>
     </div>
   `;
 
@@ -1015,37 +1020,19 @@ function clearHistory() {
 }
 
 // ============================================================
-//  下载
+//  添加到手机指引
 // ============================================================
-function downloadReading() {
-  const cards = window._lastRenmanPicks;
-  if (!cards || !cards.length) return;
-  const names = cards.map(c => c.cn).join('、');
-  const meanings = cards.map((c, i) => `【${c.cn}】${c.meaning}`).join('\n');
-  const q = document.getElementById('renman-question').value.trim() || '（未填问题）';
-  const text = `算算 · 雷诺曼占卜\n━━━━━━━━━━━━━━\n问题：${q}\n抽到：${names}\n━━━━━━━━━━━━━━\n${meanings}\n━━━━━━━━━━━━━━\n${document.getElementById('renman-reading-text').textContent}\n${new Date().toLocaleString('zh-CN')}`;
-  downloadTxt(text, '雷诺曼_' + new Date().toISOString().slice(0,10) + '.txt');
-}
-
-function downloadHexagramReading() {
-  const el = document.getElementById('hexagram-result');
-  const name = el.querySelector('.hexagram-name')?.textContent || '';
-  const reading = el.querySelector('.translation')?.textContent || '';
-  const aiTake = el.querySelector('.ai-take')?.textContent || '';
-  const q = document.getElementById('liuyao-question').value.trim() || '（未填问题）';
-  const text = `算算 · 六爻占卜\n━━━━━━━━━━━━━━\n问题：${q}\n${name}\n━━━━━━━━━━━━━━\n${reading}\n${aiTake}\n${new Date().toLocaleString('zh-CN')}`;
-  downloadTxt(text, '六爻_' + new Date().toISOString().slice(0,10) + '.txt');
-}
-
-function downloadTxt(text, filename) {
-  const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
+function showInstallGuide() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const msg = isIOS
+    ? '在 Safari 中打开此页面，点击底部分享按钮 → 「添加到主屏幕」'
+    : '在 Chrome 中打开此页面 → 菜单 → 「添加到主屏幕」';
+  const el = document.getElementById('install-guide');
+  if (el) {
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 6000);
+  }
 }
 </script>
 </body>
