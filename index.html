@@ -717,7 +717,7 @@ async function testApiKey() {
     const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{role:'user',content:'hello'}], max_tokens: 10, stream: false })
+      body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{role:'user',content:'hello'}], max_tokens: 10, stream: false })
     });
     if (res.ok) showSettingsStatus('✓ 连接成功', 'ok');
     else showSettingsStatus('✗ ' + (await res.text()).slice(0, 80), 'err');
@@ -735,7 +735,7 @@ async function callDeepSeek(prompt, systemMsg, userMsg) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.apiKey },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         messages: [
           {role:'system', content: systemMsg},
           {role:'user', content: userMsg + (prompt ? '\n用户问的是：「' + prompt + '」' : '')}
